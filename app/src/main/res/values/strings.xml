@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ders Bekçisi</string>
+    <string name="a11y_desc">Ders saatlerinde ekranda ders içeriği olup olmadığını tabletin içinde kontrol eder. Ders dışı bir şey görürse önce uyarır, sonra alarm çalar. Ekran görüntüleri hiçbir yere gönderilmez.</string>
+</resources>
