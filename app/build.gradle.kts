@@ -16,6 +16,10 @@ android {
         targetSdk = 34
         versionCode = runNumber
         versionName = "1.0.$runNumber"
+        // Lenovo Idea Tab Pro 64-bit ARM işlemcili: diğer işlemci türlerinin kütüphanelerini koyma (APK 88 MB → ~30 MB).
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     signingConfigs {

@@ -1,6 +1,6 @@
 # Ders Bekçisi
 
-Ders saatlerinde tablet ekranını izleyen, ders dışı bir şey görürse önce uyaran, sonra son ses alarm çalan Android uygulaması. Her şey tabletin içinde çalışır: ekran görüntüleri kaydedilmez, internete ya da bir yapay zekâya gönderilmez.
+Ders saatlerinde tablet ekranını izleyen, ders dışı bir şey görürse önce uyaran, sonra son ses alarm çalan Android uygulaması. Her şey tabletin içinde çalışır: ekran görüntüleri ve ekrandaki yazılar kaydedilmez, internete ya da bir yapay zekâya gönderilmez. (Yazı ve yüz tanıma için kullanılan Google ML Kit kütüphanesi kendi başına anonim kullanım istatistiği gönderebilir; ekran içeriği bunlara dahil değildir.)
 
 **APK indir:** https://github.com/disbeyin/disbeyin.github.ip/releases/latest/download/DersBekcisi.apk
 
