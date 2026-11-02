@@ -180,11 +180,24 @@ class BekciService : AccessibilityService() {
         main.post { safeTick() }
     }
 
+    private var testAfter = 0L
+    private val testRun = object : Runnable {
+        override fun run() {
+            if (!testPending) return
+            val now = System.currentTimeMillis()
+            if (busySince != 0L && now - busySince < 15_000L) {
+                main.postDelayed(this, 1500)
+                return
+            }
+            try { maybeAnalyze("test", true) } catch (t: Throwable) { Journal.add(this@BekciService, "Test hatası: $t") }
+        }
+    }
+
     fun requestTestAnalysis(delayMs: Long) {
         testPending = true
-        main.postDelayed({
-            try { maybeAnalyze("test", true) } catch (t: Throwable) { Journal.add(this, "Test hatası: $t") }
-        }, delayMs)
+        testAfter = System.currentTimeMillis() + delayMs
+        main.removeCallbacks(testRun)
+        main.postDelayed(testRun, delayMs)
     }
 
     fun describe(): String {
@@ -486,7 +499,7 @@ class BekciService : AccessibilityService() {
             }
             Verdict.NONE -> violationReason = why
         }
-        if (testPending && p.why == "test") {
+        if (testPending && p.at >= testAfter) {
             testPending = false
             Notif.test(this, "Analiz sonucu: " + v.tr, why + "\n" + summary)
         }
@@ -514,7 +527,10 @@ class BekciService : AccessibilityService() {
             collectText(root, sb, budget)
         }
         if (focused == null) focused = lastEventPkg
-        return Probe(focused, visible, pip, sb.toString(), am?.isMusicActive ?: false, overlay?.bannerHeight ?: 0, why)
+        return Probe(
+            focused, visible, pip, sb.toString(), am?.isMusicActive ?: false, overlay?.bannerHeight ?: 0, why,
+            System.currentTimeMillis()
+        )
     }
 
     private fun collectText(root: AccessibilityNodeInfo, sb: StringBuilder, budget: IntArray) {
@@ -539,8 +555,7 @@ class BekciService : AccessibilityService() {
     // ---------------------------------------------------------------- koruma
 
     private fun isGuardPkg(pkg: String): Boolean =
-        pkg.contains("settings") || pkg.contains("packageinstaller") || pkg.contains("permissioncontroller") ||
-            pkg.contains("safecenter") || pkg.contains("security")
+        pkg.contains("settings") || pkg.contains("packageinstaller") || pkg.contains("safecenter") || pkg.contains("security")
 
     private fun runGuard() {
         val now = System.currentTimeMillis()
@@ -552,7 +567,14 @@ class BekciService : AccessibilityService() {
         collectText(root, sb, intArrayOf(1200))
         val t = TextRules.norm(sb.toString())
         if (!t.contains(LABEL_NORM)) return
-        if (DANGER.none { t.contains(it) }) return
+        if (pkg.contains("packageinstaller")) {
+            // Yalnızca kaldırma onayını kapat; güncelleme ve kurulum ekranlarına dokunma.
+            val uninstall = t.contains("kaldir") || t.contains("uninstall")
+            val update = t.contains("guncelle") || t.contains("update")
+            if (!uninstall || update) return
+        } else if (DANGER.none { t.contains(it) }) {
+            return
+        }
         performGlobalAction(GLOBAL_ACTION_HOME)
         pTamper++
         Journal.add(this, "Koruma: '$pkg' ekranı kapatıldı")
@@ -610,7 +632,7 @@ class BekciService : AccessibilityService() {
     private fun status(now: Long) {
         val text = when (phase) {
             Phase.IDLE -> when {
-                !Control.armed(this) -> "Koruma kapalı"
+                !Control.monitoring(this) -> "Bekçi kapalı (uygulamadan başlat)"
                 Control.inMaint(this, now) -> "Bakım modu (bekçi duraklatıldı)"
                 schedule.isEmpty() -> "Ders saati tanımlı değil"
                 else -> "Ders saati değil · sonraki değişim: " + schedule.describeNext(now)

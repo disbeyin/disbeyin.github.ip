@@ -372,21 +372,32 @@ object Control {
 
     private fun sp(ctx: Context) = Prefs.sp(ctx)
 
+    /** Kilitli kurulum: izleme + ayar kilidi + ayar sayfası koruması. */
     fun armed(ctx: Context) = sp(ctx).getBoolean("armed", false)
+    /** Deneme modu: izleme ve alarm çalışır ama hiçbir şey kilitlenmez. */
+    fun trial(ctx: Context) = sp(ctx).getBoolean("trial", false)
+    fun monitoring(ctx: Context) = armed(ctx) || trial(ctx)
     fun maintUntil(ctx: Context) = sp(ctx).getLong("maintUntil", 0L)
     fun inMaint(ctx: Context, now: Long) = now < maintUntil(ctx)
     fun protectionActive(ctx: Context, now: Long) = armed(ctx) && !inMaint(ctx, now)
-    fun enforcementActive(ctx: Context, now: Long, sch: Schedule) = protectionActive(ctx, now) && sch.isActive(now)
+    fun enforcementActive(ctx: Context, now: Long, sch: Schedule) =
+        monitoring(ctx) && !inMaint(ctx, now) && sch.isActive(now)
     fun editable(ctx: Context, now: Long) = !armed(ctx) || inMaint(ctx, now)
 
+    fun setTrial(ctx: Context, on: Boolean) {
+        sp(ctx).edit().putBoolean("trial", on).commit()
+        Journal.add(ctx, if (on) "Deneme modu başladı (kilitsiz izleme)" else "Deneme modu durduruldu")
+        Scheduler.reschedule(ctx)
+    }
+
     fun arm(ctx: Context) {
-        sp(ctx).edit().putBoolean("armed", true).putLong("maintUntil", 0L).putLong("unlockReq", 0L).commit()
-        Journal.add(ctx, "Koruma başlatıldı")
+        sp(ctx).edit().putBoolean("armed", true).putBoolean("trial", false).putLong("maintUntil", 0L).putLong("unlockReq", 0L).commit()
+        Journal.add(ctx, "Bekçi başlatıldı ve kilitlendi")
         Scheduler.reschedule(ctx)
     }
 
     fun disarm(ctx: Context) {
-        sp(ctx).edit().putBoolean("armed", false).putLong("maintUntil", 0L).putLong("unlockReq", 0L).commit()
+        sp(ctx).edit().putBoolean("armed", false).putBoolean("trial", false).putLong("maintUntil", 0L).putLong("unlockReq", 0L).commit()
         Stats.bump(ctx, System.currentTimeMillis()) { it.unlocks++ }
         Journal.add(ctx, "Koruma tamamen kapatıldı")
         Scheduler.reschedule(ctx)

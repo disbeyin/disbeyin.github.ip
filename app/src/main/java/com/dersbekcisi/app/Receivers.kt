@@ -17,7 +17,7 @@ object Scheduler {
             val now = System.currentTimeMillis()
             val sch = Schedule(Store.load(ctx).days)
             var next = sch.nextChange(now)?.plus(2000L) ?: (now + 6 * 3600_000L)
-            if (sch.isActive(now) && Control.armed(ctx)) next = minOf(next, now + 5 * 60_000L)
+            if (sch.isActive(now) && Control.monitoring(ctx)) next = minOf(next, now + 5 * 60_000L)
             val mu = Control.maintUntil(ctx)
             if (mu > now) next = minOf(next, mu + 1500L)
             val am = ctx.getSystemService(AlarmManager::class.java) ?: return

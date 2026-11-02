@@ -86,7 +86,7 @@ class MainActivity : Activity() {
         root.addView(button("Alarm testi (3 sn)") { alarmTest() })
         root.addView(button("5 sn sonra ekranı analiz et") { testAnalysis() })
 
-        root.addView(header("3. Koruma"))
+        root.addView(header("3. Bekçiyi başlat ve kilitle"))
         protectInfo = text("")
         root.addView(protectInfo)
         protectBox = vbox()
@@ -219,22 +219,28 @@ class MainActivity : Activity() {
         val maint = Control.inMaint(this, now)
         val req = armed && !maint && Control.requestValid(this, now)
         val ready = req && now >= Control.unlockReadyAt(this)
+        val trial = Control.trial(this)
         protectInfo.text = when {
-            !armed -> "Koruma KAPALI. Kurulumu bitirip ayarlarını yaptıktan sonra korumayı başlat."
+            !armed && trial -> "DENEME MODU: ders saatinde izleme ve alarm çalışır ama hiçbir şey kilitli değil. Her şey yolundaysa kilitle."
+            !armed -> "Bekçi KAPALI: ders saatinde izleme yapılmaz. Önce deneme modunda dene, sonra kilitle."
             maint -> "Bakım modu: ${Util.mmss(Control.maintUntil(this) - now)} kaldı. Bekçi duraklatıldı, ayarlar açık. Süre bitince koruma kendiliğinden geri gelir."
             ready -> "Bekleme bitti. ${Util.mmss(Control.requestExpiresAt(this) - now)} içinde bakımı başlatabilirsin."
             req -> "Kilit açma isteği: ${Util.mmss(Control.unlockReadyAt(this) - now)} sonra açılabilecek. Bu sürede bekçi çalışmaya devam eder."
             else -> "Koruma AÇIK. Ayarları değiştirmek ya da bekçiyi kapatmak için kilidi aç."
         }
-        val sig = "$armed/$maint/$req/$ready/${Control.hasPin(this)}"
+        val sig = "$armed/$trial/$maint/$req/$ready/${Control.hasPin(this)}"
         if (force || sig != protectSig) {
             protectSig = sig
             protectBox.removeAllViews()
             if (!armed) {
-                protectBox.addView(button("Korumayı başlat") {
+                protectBox.addView(button(if (trial) "Deneme modunu durdur" else "Deneme modunda başlat (kilitsiz)") {
+                    Control.setTrial(this, !trial)
+                    stateChanged()
+                })
+                protectBox.addView(button("Bekçiyi başlat ve kilitle") {
                     confirm(
-                        "Korumayı başlat?",
-                        "Bundan sonra ayarları değiştirmek ya da bekçiyi kapatmak için ya acil durum PIN'i ya da 10 dakika bekleme gerekecek. Ders saatinde ayarlardaki ilgili sayfalar da kapatılacak."
+                        "Bekçiyi kilitle?",
+                        "Bundan sonra ayarları değiştirmek ya da bekçiyi kapatmak için ya acil durum PIN'i ya da 10 dakika bekleme gerekecek. Ayarlardaki bekçiyle ilgili sayfalar (uygulama bilgisi, erişilebilirlik, cihaz yöneticisi) da kapatılacak."
                     ) {
                         Control.arm(this)
                         stateChanged()

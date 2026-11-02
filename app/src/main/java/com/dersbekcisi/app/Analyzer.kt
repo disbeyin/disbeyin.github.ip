@@ -27,6 +27,7 @@ class Probe(
     val mediaActive: Boolean,
     val bannerPx: Int,
     val why: String,
+    val at: Long,
 )
 
 class ShotResult(val ok: Boolean, val text: String, val faces: Int, val error: String?)
