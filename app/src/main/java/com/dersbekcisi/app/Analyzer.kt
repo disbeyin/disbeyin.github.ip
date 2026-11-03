@@ -41,6 +41,16 @@ class Analyzer(private val svc: AccessibilityService, private val worker: Execut
     private var textRec: TextRecognizer? = null
     private var faceDet: FaceDetector? = null
 
+    /** Tablet kilit açılmadan önce başladıysa ML Kit kendiliğinden başlamamış olabilir; güvenli şekilde başlat. */
+    private fun ensureMlKit() {
+        try {
+            Class.forName("com.google.mlkit.common.sdkinternal.MlKitContext")
+                .getMethod("initializeIfNeeded", android.content.Context::class.java)
+                .invoke(null, svc.applicationContext)
+        } catch (_: Throwable) {
+        }
+    }
+
     fun close() {
         try { textRec?.close() } catch (_: Exception) {}
         try { faceDet?.close() } catch (_: Exception) {}
@@ -84,6 +94,7 @@ class Analyzer(private val svc: AccessibilityService, private val worker: Execut
                 Bitmap.createScaledBitmap(full, max(1, (full.width * scale).toInt()), max(1, (full.height * scale).toInt()), true)
             } else full
             val cutTop = (bannerPx * scale).toInt()
+            if (textRec == null) ensureMlKit()
             val tr = textRec ?: TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS).also { textRec = it }
             val text = Tasks.await(tr.process(InputImage.fromBitmap(ocrBmp, 0)), 10, TimeUnit.SECONDS)
             val sb = StringBuilder()
